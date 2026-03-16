@@ -20,7 +20,7 @@ def main() -> None:
             print(f"Searching for: {args.query}")
             movies = search_command(args.query)
             for i, movie in enumerate(movies, 1):
-                print(f"{i}. {movie["title"]}")
+                print(f"{i}. ({movie['id']}) {movie['title']}")
         case "build":
             print("Building inverted index...")
             build_command()

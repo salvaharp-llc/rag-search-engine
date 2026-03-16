@@ -26,6 +26,11 @@ def load_stopwords() -> list[str]:
 def ensure_cache_dir() -> None:
     os.makedirs(CACHE_DIR, exist_ok=True)
 
-def save_to_cache(path: str, obj) -> None:
+def save_to_cache(path: str, obj: dict) -> None:
     with open(path, "wb") as f:
         pickle.dump(obj, f)
+
+def load_from_cache(path: str) -> dict:
+    with open(path, "rb") as f:
+        return pickle.load(f)
+    

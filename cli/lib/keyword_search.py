@@ -1,4 +1,5 @@
 import string
+import os
 
 from nltk.stem import PorterStemmer
 
@@ -10,6 +11,7 @@ from .search_utils import (
     load_stopwords,
     ensure_cache_dir,
     save_to_cache,
+    load_from_cache,
 )
 
 class InvertedIndex:
@@ -30,6 +32,13 @@ class InvertedIndex:
         save_to_cache(INDEX_PATH, self.__index)
         save_to_cache(DOCMAP_PATH, self.__docmap)
 
+    def load(self) -> None:
+        self.__index = load_from_cache(INDEX_PATH)
+        self.__docmap = load_from_cache(DOCMAP_PATH)
+
+    def get(self, id: str) -> dict:
+        return self.__docmap.get(id, {})
+    
     def get_documents(self, term: str) -> list[int]:
         doc_ids = self.__index.get(term.lower(), set())
         return sorted(list(doc_ids))
@@ -43,22 +52,29 @@ class InvertedIndex:
                 self.__index[token] = set([doc_id])
 
 def build_command() -> None:
-    index = InvertedIndex()
-    index.build()
-    index.save()
-    docs = index.get_documents("merida")
-    print(f"First document for token 'merida' = {docs[0]}")
+    idx = InvertedIndex()
+    idx.build()
+    idx.save()
 
 def search_command(query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> list[dict]:
-    movies = load_movies()
+    idx = InvertedIndex()
+    try:
+        idx.load()
+    except FileNotFoundError as not_found:
+        print(f"Couldn't load {os.path.basename(not_found.filename)}: file does not exist")
+        os._exit(1)
     query_tokens = tokenize_text(query)
-    results = []
-    for movie in movies:
-        title_tokens = tokenize_text(movie["title"])
-        if has_matching_token(query_tokens, title_tokens):
-            results.append(movie)
-        if len(results) >= limit:
-            break
+    seen, results = set(), []
+    for token in query_tokens:
+        doc_ids = idx.get_documents(token)
+        for id in doc_ids:
+            if len(results) >= limit:
+                return results
+            if id in seen:
+                continue
+            seen.add(id)
+            doc = idx.get(id)
+            results.append(doc)
     return results
 
 def has_matching_token(query_tokens: list[str], title_tokens: list[str]) -> bool:
