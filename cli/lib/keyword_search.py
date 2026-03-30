@@ -2,11 +2,13 @@ import string
 import os
 
 from nltk.stem import PorterStemmer
+from collections import defaultdict, Counter
 
 from .search_utils import (
     DEFAULT_SEARCH_LIMIT,
     INDEX_PATH,
     DOCMAP_PATH,
+    TERM_FREQUENCIES_PATH,
     load_movies,
     load_stopwords,
     ensure_cache_dir,
@@ -16,8 +18,9 @@ from .search_utils import (
 
 class InvertedIndex:
     def __init__(self) -> None:
-        self.__index: dict[str,set[int]] = {}
+        self.__index: defaultdict[str,set[int]] = defaultdict(set)
         self.__docmap: dict[int, dict] = {}
+        self.__term_frequencies: defaultdict[int, Counter] = defaultdict(Counter)
 
     def build(self) -> None:
         movies = load_movies()
@@ -31,25 +34,32 @@ class InvertedIndex:
         ensure_cache_dir()
         save_to_cache(INDEX_PATH, self.__index)
         save_to_cache(DOCMAP_PATH, self.__docmap)
+        save_to_cache(TERM_FREQUENCIES_PATH, self.__term_frequencies)
 
     def load(self) -> None:
         self.__index = load_from_cache(INDEX_PATH)
         self.__docmap = load_from_cache(DOCMAP_PATH)
+        self.__term_frequencies = load_from_cache(TERM_FREQUENCIES_PATH)
 
     def get(self, id: str) -> dict:
         return self.__docmap.get(id, {})
     
     def get_documents(self, term: str) -> list[int]:
-        doc_ids = self.__index.get(term.lower(), set())
+        doc_ids = self.__index.get(term, set())
         return sorted(list(doc_ids))
+    
+    def get_tf(self, doc_id: int, term: str) -> int:
+        tokens = tokenize_text(term)
+        if len(tokens) != 1:
+            raise ValueError("term must be a single token")
+        token = tokens[0]
+        return self.__term_frequencies[doc_id][token]
 
     def __add_document(self, doc_id: int, text: str) -> None:
         tokens = tokenize_text(text)
         for token in set(tokens):
-            if token in self.__index:
-                self.__index[token].add(doc_id)
-            else:
-                self.__index[token] = set([doc_id])
+            self.__index[token].add(doc_id)
+        self.__term_frequencies[doc_id].update(tokens)
 
 def build_command() -> None:
     idx = InvertedIndex()
@@ -58,11 +68,8 @@ def build_command() -> None:
 
 def search_command(query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> list[dict]:
     idx = InvertedIndex()
-    try:
-        idx.load()
-    except FileNotFoundError as not_found:
-        print(f"Couldn't load {os.path.basename(not_found.filename)}: file does not exist")
-        os._exit(1)
+    idx.load()
+
     query_tokens = tokenize_text(query)
     seen, results = set(), []
     for token in query_tokens:
@@ -95,3 +102,8 @@ def tokenize_text(text: str) -> list[str]:
 
 def preprocess_text(text: str) -> str:
     return text.translate(str.maketrans("", "", string.punctuation)).lower()
+
+def tf_command(doc_id: int, term: str) -> int:
+    idx = InvertedIndex()
+    idx.load()
+    return idx.get_tf(doc_id, term)
