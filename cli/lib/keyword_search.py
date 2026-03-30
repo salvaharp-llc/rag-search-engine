@@ -51,6 +51,12 @@ class InvertedIndex:
         doc_ids = self.index.get(term, set())
         return sorted(list(doc_ids))
     
+    def __add_document(self, doc_id: int, text: str) -> None:
+        tokens = tokenize_text(text)
+        for token in set(tokens):
+            self.index[token].add(doc_id)
+        self.term_frequencies[doc_id].update(tokens)
+    
     def get_tf(self, doc_id: int, term: str) -> int:
         tokens = tokenize_text(term)
         if len(tokens) != 1:
@@ -67,11 +73,10 @@ class InvertedIndex:
         term_doc_count = len(self.index[token])
         return math.log((doc_count + 1) / (term_doc_count + 1))
 
-    def __add_document(self, doc_id: int, text: str) -> None:
-        tokens = tokenize_text(text)
-        for token in set(tokens):
-            self.index[token].add(doc_id)
-        self.term_frequencies[doc_id].update(tokens)
+    def get_tf_idf(self, doc_id: int, term: str) -> float:
+        tf = self.get_tf(doc_id, term)
+        idf = self.get_idf(term)
+        return tf * idf
 
 def build_command() -> None:
     idx = InvertedIndex()
@@ -126,3 +131,8 @@ def idf_command(term: str) -> float:
     idx = InvertedIndex()
     idx.load()
     return idx.get_idf(term)
+
+def tfidf_command(doc_id: int, term: str) -> float:
+    idx = InvertedIndex()
+    idx.load()
+    return idx.get_tf_idf(doc_id, term)
