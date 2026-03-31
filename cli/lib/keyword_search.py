@@ -9,6 +9,8 @@ from nltk.stem import PorterStemmer
 from .search_utils import (
     CACHE_DIR,
     DEFAULT_SEARCH_LIMIT,
+    BM25_K1,
+    BM25_B,
     load_movies,
     load_stopwords,
 )
@@ -17,10 +19,12 @@ class InvertedIndex:
     def __init__(self) -> None:
         self.index: defaultdict[str, set[int]] = defaultdict(set)
         self.docmap: dict[int, dict] = {}
+        self.doc_lengths: dict[int, int] = {}
         self.term_frequencies: defaultdict[int, Counter] = defaultdict(Counter)
         self.index_path = os.path.join(CACHE_DIR, "index.pkl")
         self.docmap_path = os.path.join(CACHE_DIR, "docmap.pkl")
         self.tf_path = os.path.join(CACHE_DIR, "term_frequencies.pkl")
+        self.doc_lengths_path = os.path.join(CACHE_DIR, "doc_lengths.pkl")
 
     def build(self) -> None:
         movies = load_movies()
@@ -38,6 +42,8 @@ class InvertedIndex:
             pickle.dump(self.docmap, f)
         with open(self.tf_path, "wb") as f:
             pickle.dump(self.term_frequencies, f)
+        with open(self.doc_lengths_path, "wb") as f:
+            pickle.dump(self.doc_lengths, f)
 
     def load(self) -> None:
         with open(self.index_path, "rb") as f:
@@ -46,6 +52,8 @@ class InvertedIndex:
             self.docmap = pickle.load(f)
         with open(self.tf_path, "rb") as f:
             self.term_frequencies = pickle.load(f)
+        with open(self.doc_lengths_path, "rb") as f:
+            self.doc_lengths = pickle.load(f)
     
     def get_documents(self, term: str) -> list[int]:
         doc_ids = self.index.get(term, set())
@@ -56,6 +64,13 @@ class InvertedIndex:
         for token in set(tokens):
             self.index[token].add(doc_id)
         self.term_frequencies[doc_id].update(tokens)
+        self.doc_lengths[doc_id] = len(tokens)
+    
+    def __get_avg_doc_length(self) -> float:
+        num_docs = len(self.doc_lengths)
+        if num_docs == 0:
+            return 0.0
+        return sum(self.doc_lengths.values()) / num_docs
     
     def get_tf(self, doc_id: int, term: str) -> int:
         tokens = tokenize_text(term)
@@ -63,6 +78,18 @@ class InvertedIndex:
             raise ValueError("term must be a single token")
         token = tokens[0]
         return self.term_frequencies[doc_id][token]
+    
+    def get_bm25_tf(self, doc_id: int, term: str, k1: float = BM25_K1, b: float = BM25_B) -> float:
+        tf = self.get_tf(doc_id, term)
+        avg_doc_length = self.__get_avg_doc_length()
+        doc_length = self.doc_lengths.get(doc_id, 0)
+        if avg_doc_length > 0:
+            if doc_length == 0: # avoid division by 0 if b == 1 and doc_length == 0
+                return 0
+            length_norm = 1 - b + b * (doc_length / avg_doc_length)
+        else:
+            length_norm = 1
+        return (tf * (k1 + 1) / (tf + k1 * length_norm))
     
     def get_idf(self, term: str) -> float:
         tokens = tokenize_text(term)
@@ -72,6 +99,15 @@ class InvertedIndex:
         doc_count = len(self.docmap)
         term_doc_count = len(self.index[token])
         return math.log((doc_count + 1) / (term_doc_count + 1))
+    
+    def get_bm25_idf(self, term: str) -> float:
+        tokens = tokenize_text(term)
+        if len(tokens) != 1:
+            raise ValueError("term must be a single token")
+        token = tokens[0]
+        doc_count = len(self.docmap)
+        term_doc_count = len(self.index[token])
+        return math.log((doc_count - term_doc_count + 0.5) / (term_doc_count + 0.5) + 1)
 
     def get_tf_idf(self, doc_id: int, term: str) -> float:
         tf = self.get_tf(doc_id, term)
@@ -127,10 +163,20 @@ def tf_command(doc_id: int, term: str) -> int:
     idx.load()
     return idx.get_tf(doc_id, term)
 
+def bm25_tf_command(doc_id: int, term: str, k: float = BM25_K1, b: float = BM25_B) -> float:
+    idx = InvertedIndex()
+    idx.load()
+    return idx.get_bm25_tf(doc_id, term, k, b)
+
 def idf_command(term: str) -> float:
     idx = InvertedIndex()
     idx.load()
     return idx.get_idf(term)
+
+def bm25_idf_command(term: str) -> float:
+    idx = InvertedIndex()
+    idx.load()
+    return idx.get_bm25_idf(term)
 
 def tfidf_command(doc_id: int, term: str) -> float:
     idx = InvertedIndex()
