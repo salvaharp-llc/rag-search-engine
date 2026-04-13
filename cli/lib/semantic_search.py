@@ -38,7 +38,7 @@ class SemanticSearch:
             if len(self.embeddings) == len(documents):
                 return self.embeddings
             
-        return self.build_embeddings(documents)
+        return self.build_embeddings()
 
 
 def verify_model() -> None:
