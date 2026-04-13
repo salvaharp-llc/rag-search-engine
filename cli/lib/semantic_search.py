@@ -2,7 +2,7 @@ import numpy as np
 import os
 from sentence_transformers import SentenceTransformer
 
-from .search_utils import CACHE_DIR, load_movies
+from .search_utils import CACHE_DIR, DEFAULT_SEARCH_LIMIT, load_movies
 
 class SemanticSearch:
     def __init__(self) -> None:
@@ -39,6 +39,34 @@ class SemanticSearch:
                 return self.embeddings
             
         return self.build_embeddings()
+    
+    def search(self, query: str, limit: int = DEFAULT_SEARCH_LIMIT):
+        if self.embeddings is None or self.embeddings.size == 0:
+            raise ValueError("No embeddings loaded. Call `load_or_create_embeddings` first.")
+        
+        if self.documents is None or len(self.documents) == 0:
+            raise ValueError("No documents loaded. Call `load_or_create_embeddings` first.")
+        
+        query_embedding = self.generate_embedding(query)
+        scores: list[tuple[float, dict]] = []
+        for i in range(len(self.documents)):
+            similarity_score = cosine_similarity(query_embedding, self.embeddings[i])
+            scores.append((similarity_score, self.documents[i]))
+
+        scores.sort(key=lambda x: x[0], reverse=True)
+        if len(scores) > limit:
+            scores = scores[:limit]
+
+        results: list[dict] = []
+        for score, doc in scores:
+            result = {
+                "score": score,
+                "title": doc["title"],
+                "description": doc["description"],
+            }
+            results.append(result)
+        return results
+
 
 
 def verify_model() -> None:
@@ -59,3 +87,26 @@ def verify_embeddings() -> None:
     embeddings = ss.load_or_create_embeddings(movies)
     print(f"Number of docs:   {len(movies)}")
     print(f"Embeddings shape: {embeddings.shape[0]} vectors in {embeddings.shape[1]} dimensions")
+
+def embed_query_text(query: str) -> None:
+    ss = SemanticSearch()
+    embedding = ss.generate_embedding(query)
+    print(f"Query: {query}")
+    print(f"First 3 dimensions: {embedding[:3]}")
+    print(f"Shape: {embedding.shape}")
+
+def cosine_similarity(vec1, vec2):
+    dot_product = np.dot(vec1, vec2)
+    norm1 = np.linalg.norm(vec1)
+    norm2 = np.linalg.norm(vec2)
+
+    if norm1 == 0 or norm2 == 0:
+        return 0.0
+
+    return dot_product / (norm1 * norm2)
+
+def search_command(query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> list[dict]:
+    ss = SemanticSearch()
+    movies = load_movies()
+    ss.load_or_create_embeddings(movies)
+    return ss.search(query, limit)
