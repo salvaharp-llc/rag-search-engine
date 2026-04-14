@@ -2,7 +2,13 @@ import numpy as np
 import os
 from sentence_transformers import SentenceTransformer
 
-from .search_utils import CACHE_DIR, DEFAULT_SEARCH_LIMIT, load_movies
+from .search_utils import (
+    CACHE_DIR,
+    DEFAULT_CHUNK_SIZE,
+    DEFAULT_CHUNK_OVERLAP,
+    DEFAULT_SEARCH_LIMIT,
+    load_movies,
+)
 
 class SemanticSearch:
     def __init__(self) -> None:
@@ -110,3 +116,24 @@ def search_command(query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> list[dict]:
     movies = load_movies()
     ss.load_or_create_embeddings(movies)
     return ss.search(query, limit)
+
+def chunk_command(text: str, chunk_size: int = DEFAULT_CHUNK_SIZE, overlap: int = DEFAULT_CHUNK_OVERLAP) -> None:
+    if overlap < 0:
+        overlap = 0
+
+    words = text.split()
+    chunks = []
+
+    n_words = len(words)
+    i = 0
+    while i < n_words:
+        chunk_words = words[i : i + chunk_size]
+        if chunks and len(chunk_words) <= overlap:
+            break
+
+        chunks.append(" ".join(chunk_words))
+        i += chunk_size - overlap
+
+    print(f"Chunking {len(text)} characters")
+    for i, chunk in enumerate(chunks, 1):
+        print(f"{i}. {chunk}")

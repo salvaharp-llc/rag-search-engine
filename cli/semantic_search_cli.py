@@ -2,7 +2,7 @@
 
 import argparse
 
-from lib.search_utils import DEFAULT_SEARCH_LIMIT
+from lib.search_utils import DEFAULT_SEARCH_LIMIT, DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_OVERLAP
 
 from lib.semantic_search import (
     verify_model, 
@@ -10,6 +10,7 @@ from lib.semantic_search import (
     verify_embeddings, 
     embed_query_text,
     search_command,
+    chunk_command,
 )
 
 def main():
@@ -30,6 +31,11 @@ def main():
     search_subparser.add_argument("query", type=str, help="Query to search")
     search_subparser.add_argument("--limit", type=int, nargs='?', default=DEFAULT_SEARCH_LIMIT, help="Limit number of search results")
 
+    chunk_subparser = subparsers.add_parser("chunk", help="Divide text into chunks")
+    chunk_subparser.add_argument("text", type=str, help="Text to divide")
+    chunk_subparser.add_argument("--chunk-size", type=int, nargs='?', default=DEFAULT_CHUNK_SIZE, help="Size of the chunks to divide the text into")
+    chunk_subparser.add_argument("--overlap", type=int, nargs='?', default=DEFAULT_CHUNK_OVERLAP, help="Number of words to overlap between chunks")
+
     args = parser.parse_args()
 
     match args.command:
@@ -47,6 +53,8 @@ def main():
                 print(f"{i}. {movie['title']} (score: {movie["score"]:.4f})")
                 print(f"{movie["description"][:50]}...")
                 print()
+        case "chunk":
+            chunk_command(args.text, args.chunk_size, args.overlap)
         case _:
             parser.print_help()
 
