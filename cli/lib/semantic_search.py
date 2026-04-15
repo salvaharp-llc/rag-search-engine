@@ -89,8 +89,8 @@ class ChunkedSemanticSearch(SemanticSearch):
         chunks: list[str] = []
         chunks_metadata: list[dict] = []
         for doc in self.documents:
-            description = doc["description"]
-            if not description.strip():
+            description = doc["description"].strip()
+            if not description:
                 continue
 
             doc_chunks = semantic_chunking(description, 4, 1)
@@ -235,16 +235,24 @@ def semantic_chunking(text: str, max_chunk_size: int = DEFAULT_SEMANTIC_CHUNK_SI
         raise ValueError("Overlap value cannot be negative")
     
     sentences = re.split(r"(?<=[.!?])\s+", text)
-    chunks = []
-
     n_sentences = len(sentences)
+    if n_sentences == 1 and not sentences[0].endswith((".", "!", "?")):
+        sentences = [text]
+
+    chunks = []
     i = 0
     while i < n_sentences:
         chunk_sentences = sentences[i : i + max_chunk_size]
         if chunks and len(chunk_sentences) <= overlap:
             break
-
-        chunks.append(" ".join(chunk_sentences))
+        
+        cleaned_sentences = []
+        for chunk_sentence in chunk_sentences:
+            cleaned_sentences.append(chunk_sentence.strip())
+        if not cleaned_sentences:
+            continue
+        chunk = " ".join(cleaned_sentences)
+        chunks.append(chunk)
         i += max_chunk_size - overlap
     return chunks
 
