@@ -82,7 +82,7 @@ def main():
             movies = search_chunked_command(args.query, args.limit)
             for i, movie in enumerate(movies, 1):
                 print(f"\n{i}. {movie["title"]} (score: {movie["score"]:.4f})")
-                print(f"   {movie["document"]}...")
+                print(f"   {movie["description"]}...")
         case _:
             parser.print_help()
 
