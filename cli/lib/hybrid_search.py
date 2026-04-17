@@ -1,4 +1,5 @@
 import os
+from typing import Optional
 
 from .search_utils import (
     load_movies,
@@ -7,6 +8,7 @@ from .search_utils import (
     DEFAULT_K,
 )
 
+from .query_enhancement import enhance_query
 from .keyword_search import InvertedIndex
 from .semantic_search import ChunkedSemanticSearch
 
@@ -147,7 +149,12 @@ def weighted_search_command(query: str, alpha: float = DEFAULT_ALPHA, limit: int
         print(f"   BM25: {result["bm25_score"]:.3f}, Semantic: {result["semantic_score"]:.3f}")
         print(f"   {result["description"]}...")
 
-def rrf_search_command(query: str, k: int = DEFAULT_K, limit: int = DEFAULT_SEARCH_LIMIT) -> None:
+def rrf_search_command(query: str, k: int = DEFAULT_K, limit: int = DEFAULT_SEARCH_LIMIT, enhance: Optional[str] = None) -> None:
+    if enhance:
+        original_query = query
+        query = enhance_query(query, option=enhance)
+        print(f"Enhanced query ({enhance}): '{original_query}' -> '{query}'\n")
+
     movies = load_movies()
     hs = HybridSearch(movies)
     results = hs.rrf_search(query, k, limit)
