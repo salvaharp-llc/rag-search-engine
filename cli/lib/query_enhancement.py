@@ -1,15 +1,8 @@
-import os
-from dotenv import load_dotenv
 from google import genai
 
-load_dotenv()
-API_KEY = os.environ.get("GEMINI_API_KEY")
-if not API_KEY:
-    raise RuntimeError("GEMINI_API_KEY environment variable not set")
+from .gen_utils import API_KEY, GEN_MODEL
 
-GEN_MODEL = "gemma-3-27b-it"
-
-ENHANCEMENT_PROMPTS = {
+enhancement_prompts = {
     # Spell Enhancement
     "spell": """Fix any spelling errors in the user-provided movie search query below.
     Correct only clear, high-confidence typos. Do not rewrite, add, remove, or reorder words.
@@ -51,10 +44,10 @@ ENHANCEMENT_PROMPTS = {
 }
 
 def enhance_query(query: str, option: str) -> str:
-    if option not in ENHANCEMENT_PROMPTS:
+    if option not in enhancement_prompts:
         return query
     
-    prompt = f"""{ENHANCEMENT_PROMPTS[option]}
+    prompt = f"""{enhancement_prompts[option]}
     User query: "{query}"
     """
 

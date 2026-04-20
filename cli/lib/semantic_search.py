@@ -10,7 +10,6 @@ from .search_utils import (
     DEFAULT_CHUNK_OVERLAP,
     DEFAULT_SEARCH_LIMIT,
     DEFAULT_SEMANTIC_CHUNK_SIZE,
-    DOCUMENT_PREVIEW_LENGTH,
     load_movies,
 )
 
@@ -158,7 +157,7 @@ class ChunkedSemanticSearch(SemanticSearch):
                 {
                     "id": doc_id,
                     "title": doc["title"],
-                    "description": doc["description"][:DOCUMENT_PREVIEW_LENGTH],
+                    "description": doc["description"],
                     "score": score,
                 }
             )
