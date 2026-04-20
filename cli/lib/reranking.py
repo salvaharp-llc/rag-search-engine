@@ -4,6 +4,10 @@ import json
 from .gen_utils import API_KEY, GEN_MODEL
 from .search_utils import DEFAULT_SEARCH_LIMIT
 
+from sentence_transformers import CrossEncoder
+
+cross_encoder = CrossEncoder("cross-encoder/ms-marco-TinyBERT-L2-v2")
+
 def rerank_individual(query: str, results: list[dict], limit: int = DEFAULT_SEARCH_LIMIT) -> list[dict]:
     for result in results:
         prompt = f"""Rate how well this movie matches the search query.
@@ -66,11 +70,25 @@ def rerank_batch(query: str, results: list[dict], limit: int = DEFAULT_SEARCH_LI
 
     return reranked[:limit]
 
+def rerank_cross_encoder(query: str, results: list[dict], limit: int = DEFAULT_SEARCH_LIMIT) -> list[dict]:
+    pairs = []
+    for res in results:
+        pairs.append([query, f"{res.get('title', '')} - {res.get('document', '')}"])
+
+    scores = cross_encoder.predict(pairs)
+
+    for i, score in enumerate(scores):
+        results[i]["cross_encoder_score"] = score
+
+    return sorted(results, key = lambda x: x["cross_encoder_score"], reverse=True)[:limit]
+
 def rerank_results(query: str, results: list[dict], option: str, limit: int = DEFAULT_SEARCH_LIMIT) -> list[dict]:
     match option:
         case "individual":
             return rerank_individual(query, results, limit)
         case "batch":
             return rerank_batch(query, results, limit)
+        case "cross_encoder":
+            return rerank_cross_encoder(query, results, limit)
         case _:
             return results[:limit]

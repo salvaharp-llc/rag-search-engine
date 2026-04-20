@@ -177,6 +177,8 @@ def rrf_search_command(
                 print(f"   Re-rank Score: {result.get("rerank_score", -1):.3f}/10")
             case "batch":
                 print(f"   Re-rank Rank: {result.get("rerank_rank", -1)}")
+            case "cross_encoder":
+                print(f"   Cross Encoder Score: {result.get("cross_encoder_score", -1):.3f}")
         print(f"   RRF Score: {result["score"]:.3f}")
         print(f"   BM25 Rank: {result.get("bm25_rank", -1)}, Semantic: {result.get("semantic_rank", -1)}")
         print(f"   {result["description"][:DOCUMENT_PREVIEW_LENGTH]}...")
