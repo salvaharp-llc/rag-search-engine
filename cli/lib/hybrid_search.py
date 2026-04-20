@@ -172,8 +172,11 @@ def rrf_search_command(
         
     for i, result in enumerate(results, 1):
         print(f"{i}. {result["title"]}")
-        if rerank_method:
-            print(f"   Re-rank Score: {result.get("rerank_score", -1):.3f}/10")
+        match rerank_method:
+            case "individual":
+                print(f"   Re-rank Score: {result.get("rerank_score", -1):.3f}/10")
+            case "batch":
+                print(f"   Re-rank Rank: {result.get("rerank_rank", -1)}")
         print(f"   RRF Score: {result["score"]:.3f}")
         print(f"   BM25 Rank: {result.get("bm25_rank", -1)}, Semantic: {result.get("semantic_rank", -1)}")
         print(f"   {result["description"][:DOCUMENT_PREVIEW_LENGTH]}...")

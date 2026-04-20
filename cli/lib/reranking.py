@@ -1,4 +1,5 @@
 from google import genai
+import json
 
 from .gen_utils import API_KEY, GEN_MODEL
 from .search_utils import DEFAULT_SEARCH_LIMIT
@@ -28,9 +29,48 @@ def rerank_individual(query: str, results: list[dict], limit: int = DEFAULT_SEAR
     
     return sorted(results, key = lambda x: x["rerank_score"], reverse=True)[:limit]
 
+def rerank_batch(query: str, results: list[dict], limit: int = DEFAULT_SEARCH_LIMIT) -> list[dict]:
+    if not results:
+        return []
+    
+    res_map = {}
+    movies_str = ""
+    for res in results:
+        doc_id = res["id"]
+        res_map[doc_id] = res
+        movies_str += f"{doc_id}: {res.get('title', '')} - {res.get('document', '')}\n"
+
+    prompt = f"""Rank the movies listed below by relevance to the following search query.
+
+    Query: "{query}"
+
+    Movies:
+    {movies_str}
+
+    Return ONLY the movie IDs in order of relevance (best match first). Return a valid JSON list, nothing else.
+
+    For example:
+    [75, 12, 34, 2, 1]
+
+    Ranking:"""
+
+    client = genai.Client(api_key=API_KEY)
+    response = client.models.generate_content(model=GEN_MODEL, contents=prompt)
+    corrected = (response.text or "").strip().strip('"')
+    ranked_ids: list[int] = json.loads(corrected)
+
+    reranked = []
+    for i, doc_id in enumerate(ranked_ids, 1):
+        if doc_id in res_map:
+            reranked.append({**res_map[doc_id], "rerank_rank": i})
+
+    return reranked[:limit]
+
 def rerank_results(query: str, results: list[dict], option: str, limit: int = DEFAULT_SEARCH_LIMIT) -> list[dict]:
     match option:
         case "individual":
             return rerank_individual(query, results, limit)
+        case "batch":
+            return rerank_batch(query, results, limit)
         case _:
             return results[:limit]
