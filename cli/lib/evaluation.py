@@ -28,12 +28,18 @@ def evaluate_command(limit: int = DEFAULT_EVALUATION_LIMIT) -> None:
         for doc in retrieved_docs:
             if doc in relevant_docs:
                 relevant_count += 1
-        precision = relevant_count / limit
+
+        precision = relevant_count / len(retrieved_docs)
         recall = relevant_count / len(relevant_docs)
+        if precision + recall == 0:
+            f1_socre = 0
+        else:
+            f1_socre = 2 * (precision * recall) / (precision + recall)
 
         print(f"- Query: {query}")
         print(f"    - Precision@{limit}: {precision:.4f}")
         print(f"    - Recall@{limit}: {recall:.4f}")
+        print(f"    - F1 Score: {f1_socre:.4f}")
         print(f"    - Retreived: {', '.join(retrieved_docs)}")
         print(f"    - Relevant: {', '.join(relevant_docs)}")
         print()
