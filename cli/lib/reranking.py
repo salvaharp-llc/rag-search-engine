@@ -6,14 +6,13 @@ from .search_utils import DEFAULT_SEARCH_LIMIT
 
 from sentence_transformers import CrossEncoder
 
-cross_encoder = CrossEncoder("cross-encoder/ms-marco-TinyBERT-L2-v2")
 
 def rerank_individual(query: str, results: list[dict], limit: int = DEFAULT_SEARCH_LIMIT) -> list[dict]:
     for result in results:
         prompt = f"""Rate how well this movie matches the search query.
 
         Query: "{query}"
-        Movie: {result.get("title", "")} - {result.get("document", "")}
+        Movie: {result.get("title", "")} - {result.get("description", "")}
 
         Consider:
         - Direct relevance to query
@@ -42,7 +41,7 @@ def rerank_batch(query: str, results: list[dict], limit: int = DEFAULT_SEARCH_LI
     for res in results:
         doc_id = res["id"]
         res_map[doc_id] = res
-        movies_str += f"{doc_id}: {res.get('title', '')} - {res.get('document', '')}\n"
+        movies_str += f"{doc_id}: {res.get('title', '')} - {res.get('description', '')}\n"
 
     prompt = f"""Rank the movies listed below by relevance to the following search query.
 
@@ -71,9 +70,11 @@ def rerank_batch(query: str, results: list[dict], limit: int = DEFAULT_SEARCH_LI
     return reranked[:limit]
 
 def rerank_cross_encoder(query: str, results: list[dict], limit: int = DEFAULT_SEARCH_LIMIT) -> list[dict]:
+    cross_encoder = CrossEncoder("cross-encoder/ms-marco-TinyBERT-L2-v2")
+
     pairs = []
     for res in results:
-        pairs.append([query, f"{res.get('title', '')} - {res.get('document', '')}"])
+        pairs.append([query, f"{res.get('title', '')} - {res.get('description', '')}"])
 
     scores = cross_encoder.predict(pairs)
 

@@ -6,7 +6,6 @@ from .search_utils import (
     DEFAULT_ALPHA,
     DEFAULT_SEARCH_LIMIT,
     DEFAULT_K,
-    DOCUMENT_PREVIEW_LENGTH,
     SEARCH_MULTIPLIER,
 )
 
@@ -157,7 +156,7 @@ def rrf_search_command(
         limit: int = DEFAULT_SEARCH_LIMIT, 
         enhance: Optional[str] = None,
         rerank_method: Optional[str] = None,
-    ) -> None:
+    ) -> list[dict]:
     if enhance:
         original_query = query
         query = enhance_query(query, option=enhance)
@@ -168,17 +167,11 @@ def rrf_search_command(
     results = hs.rrf_search(query, k, SEARCH_MULTIPLIER * limit if rerank_method else limit)
 
     if rerank_method:
+        print("Results before re-ranking:")
+        for i, result in enumerate(results, 1):
+            print(f"{i}. {result["title"]}")
+            print(f"   RRF Score: {result["score"]:.3f}")
+            print(f"   BM25 Rank: {result.get("bm25_rank", -1)}, Semantic: {result.get("semantic_rank", -1)}")
         results = rerank_results(query, results, rerank_method, limit)
-        
-    for i, result in enumerate(results, 1):
-        print(f"{i}. {result["title"]}")
-        match rerank_method:
-            case "individual":
-                print(f"   Re-rank Score: {result.get("rerank_score", -1):.3f}/10")
-            case "batch":
-                print(f"   Re-rank Rank: {result.get("rerank_rank", -1)}")
-            case "cross_encoder":
-                print(f"   Cross Encoder Score: {result.get("cross_encoder_score", -1):.3f}")
-        print(f"   RRF Score: {result["score"]:.3f}")
-        print(f"   BM25 Rank: {result.get("bm25_rank", -1)}, Semantic: {result.get("semantic_rank", -1)}")
-        print(f"   {result["description"][:DOCUMENT_PREVIEW_LENGTH]}...")
+
+    return results

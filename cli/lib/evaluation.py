@@ -1,3 +1,5 @@
+import json
+from google import genai
 from .hybrid_search import HybridSearch
 
 from .search_utils import (
@@ -5,6 +7,7 @@ from .search_utils import (
     load_test_cases,
     DEFAULT_EVALUATION_LIMIT,
 )
+from .gen_utils import API_KEY, GEN_MODEL
 
 
 def evaluate_command(limit: int = DEFAULT_EVALUATION_LIMIT) -> None:
@@ -43,3 +46,42 @@ def evaluate_command(limit: int = DEFAULT_EVALUATION_LIMIT) -> None:
         print(f"    - Retreived: {', '.join(retrieved_docs)}")
         print(f"    - Relevant: {', '.join(relevant_docs)}")
         print()
+
+def evaluate_with_llm(query: str, results: list[dict]) -> list[dict]:
+    formatted_results = []
+    for i, result in enumerate(results, 1):
+        formatted_results.append(f"{i}. {result['title']}")
+    
+    prompt = f"""Rate how relevant each result is to this query on a 0-3 scale:
+
+    Query: "{query}"
+
+    Results:
+    {chr(10).join(formatted_results)}
+
+    Scale:
+    - 3: Highly relevant
+    - 2: Relevant
+    - 1: Marginally relevant
+    - 0: Not relevant
+
+    Do NOT give any numbers other than 0, 1, 2, or 3.
+
+    Return ONLY the scores in the same order you were given the documents. Return a valid JSON list, nothing else. For example:
+
+    [2, 0, 3, 2, 0, 1]"""
+
+    client = genai.Client(api_key=API_KEY)
+    response = client.models.generate_content(model=GEN_MODEL, contents=prompt)
+    corrected = (response.text or "").strip().strip('"')
+    ratings: list[int] = json.loads(corrected)
+
+    if len(ratings) != len(results):
+        raise ValueError(
+            f"LLM response parsing error. Expected {len(results)} scores, got {len(ratings)}. Response: {ratings}"
+        )
+
+    evaluations = []
+    for i, result in enumerate(results):
+        evaluations.append({"title": result["title"], "rating": ratings[i]})
+    return evaluations
