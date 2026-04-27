@@ -1,0 +1,35 @@
+import argparse
+import sys
+
+from lib.augmented_generation import rag_command
+
+def main():
+    parser = argparse.ArgumentParser(description="Retrieval Augmented Generation CLI")
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
+
+    rag_parser = subparsers.add_parser(
+        "rag", help="Perform RAG (search + generate answer)"
+    )
+    rag_parser.add_argument("query", type=str, help="Search query for RAG")
+
+    args = parser.parse_args()
+
+    match args.command:
+        case "rag":
+            result = rag_command(args.query)
+            
+            if "error" in result:
+                print(f"Error: {result["error"]}")
+                sys.exit()
+
+            print("Search Results:")
+            for search_result in result["search_results"]:
+                print(f"- {search_result["title"]}")
+            print()
+            print("RAG Response:")
+            print(result["answer"])
+        case _:
+            parser.print_help()
+
+if __name__ == "__main__":
+    main()
