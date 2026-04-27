@@ -5,6 +5,7 @@ from lib.augmented_generation import (
     rag_command, 
     summarize_command, 
     citations_command,
+    question_command,
 )
 from lib.search_utils import DEFAULT_SEARCH_LIMIT
 
@@ -29,6 +30,12 @@ def main():
     citations_parser.add_argument("query", type=str, help="Search query for RAG")
     citations_parser.add_argument("--limit", type=int, default=DEFAULT_SEARCH_LIMIT, help="Limit number of search results to summarize")
 
+    question_parser = subparsers.add_parser(
+        "question", help="Perform search + question answering based on the documets retreived"
+    )
+    question_parser.add_argument("query", type=str, help="Search query for RAG")
+    question_parser.add_argument("--limit", type=int, default=DEFAULT_SEARCH_LIMIT, help="Limit number of search results")
+
     args = parser.parse_args()
 
     match args.command:
@@ -38,6 +45,8 @@ def main():
             print_result(summarize_command(args.query, args.limit), "LLM Summary")
         case "citations":
             print_result(citations_command(args.query, args.limit), "LLM Answer")
+        case "question":
+            print_result(question_command(args.query, args.limit), "Answer")
         case _:
             parser.print_help()
 

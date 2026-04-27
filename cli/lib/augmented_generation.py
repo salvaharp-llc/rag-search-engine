@@ -14,6 +14,9 @@ def summarize_command(query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> dict:
 def citations_command(query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> dict:
     return generate_answer(query, "citation", limit=limit)
 
+def question_command(query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> dict:
+    return generate_answer(query, "question_answer", limit=limit)
+
 def format_search_results(results: list[dict]) -> str:
     formatted_results = []
     for result in results:
@@ -76,6 +79,29 @@ def generate_answer(query: str, answer_type: str, limit: int = DEFAULT_SEARCH_LI
             - If sources disagree, mention the different viewpoints
             - If the answer isn't in the provided documents, say "I don't have enough information"
             - Be direct and informative
+
+            Answer:"""
+        case "question_answer":
+            prompt = f"""Answer the user's question based on the provided movies that are available on Hoopla, a streaming service.
+
+            Question: {query}
+
+            Documents:
+            {docs}
+
+            Instructions:
+            - Answer questions directly and concisely
+            - Be casual and conversational
+            - Don't be cringe or hype-y
+            - Talk like a normal person would in a chat conversation
+            - Use only information from the documents
+            - If the answer isn't in the documents, say "I don't have enough information"
+            - Cite sources when possible
+
+            Guidance on types of questions:
+            - Factual questions: Provide a direct answer
+            - Analytical questions: Compare and contrast information from the documents
+            - Opinion-based questions: Acknowledge subjectivity and provide a balanced view
 
             Answer:"""
         case _:
