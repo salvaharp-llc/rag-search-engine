@@ -11,6 +11,9 @@ def rag_command(query: str) -> dict:
 def summarize_command(query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> dict:
     return generate_answer(query, "summary", limit=limit)
 
+def citations_command(query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> dict:
+    return generate_answer(query, "citation", limit=limit)
+
 def format_search_results(results: list[dict]) -> str:
     formatted_results = []
     for result in results:
@@ -28,6 +31,8 @@ def generate_answer(query: str, answer_type: str, limit: int = DEFAULT_SEARCH_LI
             "error": "No results found",
         }
     
+    docs = format_search_results(results)
+    
     match answer_type:
         case "search":
             prompt = f"""You are a RAG agent for Hoopla, a movie streaming service.
@@ -37,7 +42,7 @@ def generate_answer(query: str, answer_type: str, limit: int = DEFAULT_SEARCH_LI
             Query: {query}
 
             Documents:
-            {format_search_results(results)}
+            {docs}
 
             Answer:"""
         case "summary":
@@ -51,9 +56,28 @@ def generate_answer(query: str, answer_type: str, limit: int = DEFAULT_SEARCH_LI
             Query: {query}
 
             Search results:
-            {format_search_results(results)}
+            {docs}
 
             Provide a comprehensive 3–4 sentence answer that combines information from multiple sources:"""
+        case "citation":
+            prompt = f"""Answer the query below and give information based on the provided documents.
+
+            The answer should be tailored to users of Hoopla, a movie streaming service.
+            If not enough information is available to provide a good answer, say so, but give the best answer possible while citing the sources available.
+
+            Query: {query}
+
+            Documents:
+            {docs}
+
+            Instructions:
+            - Provide a comprehensive answer that addresses the query
+            - Cite sources in the format [1], [2], etc. when referencing information
+            - If sources disagree, mention the different viewpoints
+            - If the answer isn't in the provided documents, say "I don't have enough information"
+            - Be direct and informative
+
+            Answer:"""
         case _:
             return {
                 "search_results": results,

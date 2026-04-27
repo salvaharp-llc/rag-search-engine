@@ -1,7 +1,11 @@
 import argparse
 import sys
 
-from lib.augmented_generation import rag_command, summarize_command
+from lib.augmented_generation import (
+    rag_command, 
+    summarize_command, 
+    citations_command,
+)
 from lib.search_utils import DEFAULT_SEARCH_LIMIT
 
 def main():
@@ -14,10 +18,16 @@ def main():
     rag_parser.add_argument("query", type=str, help="Search query for RAG")
 
     summarize_parser = subparsers.add_parser(
-        "summarize", help="Perform (search + document summarization)"
+        "summarize", help="Perform search + document summarization"
     )
     summarize_parser.add_argument("query", type=str, help="Search query for RAG")
-    summarize_parser.add_argument("--limit", type=int, default=DEFAULT_SEARCH_LIMIT, help="Search query for RAG")
+    summarize_parser.add_argument("--limit", type=int, default=DEFAULT_SEARCH_LIMIT, help="Limit number of search results to summarize")
+
+    citations_parser = subparsers.add_parser(
+        "citations", help="Perform search + document summarization with citations in the summary"
+    )
+    citations_parser.add_argument("query", type=str, help="Search query for RAG")
+    citations_parser.add_argument("--limit", type=int, default=DEFAULT_SEARCH_LIMIT, help="Limit number of search results to summarize")
 
     args = parser.parse_args()
 
@@ -26,6 +36,8 @@ def main():
             print_result(rag_command(args.query), "RAG Response")
         case "summarize":
             print_result(summarize_command(args.query, args.limit), "LLM Summary")
+        case "citations":
+            print_result(citations_command(args.query, args.limit), "LLM Answer")
         case _:
             parser.print_help()
 
